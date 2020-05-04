@@ -18,14 +18,12 @@ import PropTypes from 'prop-types';
 import styled from '@emotion/styled';
 import { css } from '@emotion/core';
 import Downshift from 'downshift';
-import { includes, isString, isEmpty } from 'lodash/fp';
+import { isString, isEmpty } from 'lodash/fp';
 
 import SearchInput from '../SearchInput';
 import Card from '../Card';
 import Text from '../Text';
 import { childrenPropType } from '../../util/shared-prop-types';
-
-const MIN_INPUT_LENGTH = 2;
 
 const autoCompleteWrapperStyles = ({ theme }) => css`
   label: input__container;
@@ -72,16 +70,6 @@ const optionSelectedStyles = ({ selected, theme }) =>
   `;
 
 const Option = styled(Text)(optionBaseStyles, optionSelectedStyles);
-
-const defaultFilterOptions = (options, inputValue) => {
-  if (!inputValue || inputValue.length < MIN_INPUT_LENGTH) {
-    return options;
-  }
-  return options.filter(option => {
-    const value = isString(option) ? option : option.value;
-    return includes(inputValue.toLowerCase(), value.toLowerCase());
-  });
-};
 
 const optionsPropType = PropTypes.arrayOf(
   PropTypes.oneOfType([
@@ -151,7 +139,9 @@ const AutoCompleteInput = ({
         isOpen,
         highlightedIndex
       }) => {
-        const filteredOptions = filterOptions(options, inputValue);
+        const filteredOptions = filterOptions
+          ? filterOptions(options, inputValue)
+          : options;
         const maxOptions = filteredOptions.slice(0, maxNumberOfOptions);
 
         return (
@@ -230,7 +220,6 @@ AutoCompleteInput.propTypes = {
 };
 
 AutoCompleteInput.defaultProps = {
-  filterOptions: defaultFilterOptions,
   maxNumberOfOptions: 7,
   clearOnSelect: false
 };

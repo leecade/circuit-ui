@@ -14,7 +14,7 @@
  */
 
 import React, { useState } from 'react';
-import { includes, debounce } from 'lodash/fp';
+import { includes, debounce, isString } from 'lodash/fp';
 import { action } from '@storybook/addon-actions';
 import { boolean } from '@storybook/addon-knobs/react';
 
@@ -54,6 +54,16 @@ const icons = {
   'Honeydew Melon': '🍈'
 };
 
+const filterOptions = (options, inputValue) => {
+  if (!inputValue) {
+    return options;
+  }
+  return options.filter(option => {
+    const value = isString(option) ? option : option.value;
+    return includes(inputValue.toLowerCase(), value.toLowerCase());
+  });
+};
+
 // Inputs always need labels for accessibility.
 const AutoCompleteInputWithLabel = props => {
   const id = uniqueId();
@@ -75,6 +85,7 @@ export const base = () => (
     onChange={action('onChange')}
     onInputValueChange={action('onInputValueChange')}
     onClear={action('onClear')}
+    filterOptions={filterOptions}
   />
 );
 
@@ -93,6 +104,7 @@ export const customOptions = () => {
       onChange={action('onChange')}
       onInputValueChange={action('onInputValueChange')}
       onClear={action('onClear')}
+      filterOptions={filterOptions}
     />
   );
 };
@@ -104,22 +116,19 @@ export const preselected = () => (
     onChange={action('onChange')}
     onInputValueChange={action('onInputValueChange')}
     onClear={action('onClear')}
+    filterOptions={filterOptions}
   />
 );
 
 const AsyncAutoCompleteInput = () => {
   const [options, setOptions] = useState([]);
 
-  const handleInputValueChange = debounce(100, inputValue => {
+  const handleInputValueChange = debounce(200, inputValue => {
     action('onInputValueChange')(inputValue);
     setTimeout(() => {
-      const filteredOptions = inputValue
-        ? items.filter(option =>
-            includes(inputValue.toLowerCase(), option.toLowerCase())
-          )
-        : options;
+      const filteredOptions = filterOptions(items, inputValue);
       setOptions(filteredOptions);
-    }, 500);
+    }, 1000);
   });
 
   return (
@@ -127,7 +136,6 @@ const AsyncAutoCompleteInput = () => {
       options={options}
       onChange={action('onChange')}
       onInputValueChange={handleInputValueChange}
-      filterOptions={opts => opts}
       onClear={action('onClear')}
     />
   );

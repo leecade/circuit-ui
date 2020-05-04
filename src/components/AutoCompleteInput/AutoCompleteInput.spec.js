@@ -38,6 +38,14 @@ describe('AutoCompleteInput', () => {
    * Logic tests.
    */
   it('should filter options as the user types', () => {
+    const filterOptions = (items, inputValue) => {
+      if (!inputValue) {
+        return items;
+      }
+      return items.filter(option =>
+        option.value.toLowerCase().includes(inputValue.toLowerCase())
+      );
+    };
     const onChange = jest.fn();
     const onInputValueChange = jest.fn();
     const { getByTestId } = render(
@@ -45,6 +53,7 @@ describe('AutoCompleteInput', () => {
         onChange={onChange}
         onInputValueChange={onInputValueChange}
         options={options}
+        filterOptions={filterOptions}
         data-testid="autocomplete-input"
       />
     );
