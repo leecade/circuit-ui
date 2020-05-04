@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import React, { Component } from 'react';
+import React, { useRef } from 'react';
 import PropTypes from 'prop-types';
 import styled from '@emotion/styled';
 import { css } from '@emotion/core';
@@ -96,145 +96,146 @@ const optionsPropType = PropTypes.arrayOf(
 /**
  * Basic AutoCompleteInput input with styled suggestions list
  */
-export default class AutoCompleteInput extends Component {
-  static propTypes = {
-    /**
-     * A collection of options that can be selected. An option can be a string
-     * or an object with a `value` and an optional `children` property.
-     * Additional properties are spread on the option element.
-     */
-    options: optionsPropType.isRequired,
-    /**
-     * Callback function that is called when the user selects a value
-     */
-    onChange: PropTypes.func.isRequired,
-    /**
-     * Callback function that is called as the user is typing
-     */
-    onInputValueChange: PropTypes.func,
-    /**
-     * A function that receives all options and the current input value
-     * and returns the filtered options.
-     */
-    filterOptions: PropTypes.func,
-    /**
-     * The maximum number of suggestions to show to the user
-     */
-    maxNumberOfOptions: PropTypes.number,
-    /**
-     * Whether to clean the input after a value is selected
-     */
-    clearOnSelect: PropTypes.bool,
-    /**
-     * Callback function that is called when the user clears the input
-     */
-    onClear: PropTypes.func,
-    /**
-     * This is the initial input value.
-     */
-    defaultInputValue: PropTypes.string,
-    /**
-     * Pass an option or an array of options that should be selected by default.
-     */
-    initialSelectedItem: PropTypes.string
+const AutoCompleteInput = ({
+  options,
+  onChange,
+  clearOnSelect,
+  onInputValueChange,
+  filterOptions,
+  maxNumberOfOptions,
+  defaultInputValue,
+  initialSelectedItem,
+  onClear,
+  ...inputProps
+}) => {
+  const downshiftRef = useRef(null);
+
+  const baseHandleClear = () => {
+    if (downshiftRef) {
+      downshiftRef.current.clearSelection();
+    }
+    if (onClear) {
+      onClear();
+    }
   };
 
-  static defaultProps = {
-    filterOptions: defaultFilterOptions,
-    maxNumberOfOptions: 7,
-    clearOnSelect: false
-  };
-
-  handleChange = value => {
-    const { clearOnSelect, onChange } = this.props;
-
+  const handleChange = value => {
     if (value) {
       onChange(value);
 
       if (clearOnSelect) {
-        this.handleClear();
+        baseHandleClear();
       }
     }
   };
 
-  handleClear = () => {
-    if (this.downshiftRef) {
-      this.downshiftRef.clearSelection();
-    }
-    if (this.props.onClear) {
-      this.props.onClear();
-    }
+  const handleDownShiftRef = ref => {
+    downshiftRef.current = ref;
   };
 
-  handleDownShiftRef = ref => {
-    this.downshiftRef = ref;
-  };
+  const handleClear = onClear ? baseHandleClear : null;
 
-  render() {
-    const {
-      options,
-      onChange,
-      clearOnSelect,
-      onInputValueChange,
-      filterOptions,
-      maxNumberOfOptions,
-      defaultInputValue,
-      initialSelectedItem,
-      onClear,
-      ...inputProps
-    } = this.props;
+  return (
+    <Downshift
+      ref={handleDownShiftRef}
+      onSelect={handleChange}
+      onInputValueChange={onInputValueChange}
+      initialSelectedItem={initialSelectedItem}
+      defaultInputValue={defaultInputValue}
+    >
+      {({
+        getRootProps,
+        getInputProps,
+        getItemProps,
+        inputValue,
+        isOpen,
+        highlightedIndex
+      }) => {
+        const filteredOptions = filterOptions(options, inputValue);
+        const maxOptions = filteredOptions.slice(0, maxNumberOfOptions);
 
-    const handleClear = onClear ? this.handleClear : null;
+        return (
+          <AutoCompleteWrapper {...getRootProps({ refKey: 'ref' })}>
+            <SearchInput
+              {...getInputProps(inputProps)}
+              onClear={handleClear}
+              noMargin
+            />
+            {isOpen && !isEmpty(maxOptions) && (
+              <Options spacing={Card.MEGA}>
+                {maxOptions.map((option, index) => {
+                  const item = isString(option) ? { value: option } : option;
+                  const { value, children = value, ...rest } = item;
+                  return (
+                    <Option
+                      {...getItemProps({ item: value })}
+                      key={value}
+                      selected={index === highlightedIndex}
+                      noMargin
+                      {...rest}
+                    >
+                      {children}
+                    </Option>
+                  );
+                })}
+              </Options>
+            )}
+          </AutoCompleteWrapper>
+        );
+      }}
+    </Downshift>
+  );
+};
 
-    return (
-      <Downshift
-        ref={this.handleDownShiftRef}
-        onSelect={this.handleChange}
-        onInputValueChange={onInputValueChange}
-        initialSelectedItem={initialSelectedItem}
-        defaultInputValue={defaultInputValue}
-      >
-        {({
-          getRootProps,
-          getInputProps,
-          getItemProps,
-          inputValue,
-          isOpen,
-          highlightedIndex
-        }) => {
-          const filteredOptions = filterOptions(options, inputValue);
-          const maxOptions = filteredOptions.slice(0, maxNumberOfOptions);
+AutoCompleteInput.propTypes = {
+  /**
+   * A collection of options that can be selected. An option can be a string
+   * or an object with a `value` and an optional `children` property.
+   * Additional properties are spread on the option element.
+   */
+  options: optionsPropType.isRequired,
+  /**
+   * Callback function that is called when the user selects a value
+   */
+  onChange: PropTypes.func.isRequired,
+  /**
+   * Callback function that is called as the user is typing
+   */
+  onInputValueChange: PropTypes.func,
+  /**
+   * A function that receives all options and the current input value
+   * and returns the filtered options.
+   */
+  filterOptions: PropTypes.func,
+  /**
+   * The maximum number of suggestions to show to the user
+   */
+  maxNumberOfOptions: PropTypes.number,
+  /**
+   * Whether to clean the input after a value is selected
+   */
+  clearOnSelect: PropTypes.bool,
+  /**
+   * Callback function that is called when the user clears the input
+   */
+  onClear: PropTypes.func,
+  /**
+   * This is the initial input value.
+   */
+  defaultInputValue: PropTypes.string,
+  /**
+   * Pass an option or an array of options that should be selected by default.
+   */
+  initialSelectedItem: PropTypes.string
+};
 
-          return (
-            <AutoCompleteWrapper {...getRootProps({ refKey: 'ref' })}>
-              <SearchInput
-                {...getInputProps(inputProps)}
-                onClear={handleClear}
-                noMargin
-              />
-              {isOpen && !isEmpty(maxOptions) && (
-                <Options spacing={Card.MEGA}>
-                  {maxOptions.map((option, index) => {
-                    const item = isString(option) ? { value: option } : option;
-                    const { value, children = value, ...rest } = item;
-                    return (
-                      <Option
-                        {...getItemProps({ item: value })}
-                        key={value}
-                        selected={index === highlightedIndex}
-                        noMargin
-                        {...rest}
-                      >
-                        {children}
-                      </Option>
-                    );
-                  })}
-                </Options>
-              )}
-            </AutoCompleteWrapper>
-          );
-        }}
-      </Downshift>
-    );
-  }
-}
+AutoCompleteInput.defaultProps = {
+  filterOptions: defaultFilterOptions,
+  maxNumberOfOptions: 7,
+  clearOnSelect: false
+};
+
+/**
+ * @component
+ */
+export default AutoCompleteInput;
